@@ -31,7 +31,7 @@ def choice_video_option(url_videos):
 
 def execute_video(user_choice, url_videos):
     command = ["mpv", url_videos[user_choice]]
-    subprocess.run(command, stdout=subprocess.PIPE,
+    subprocess.Popen(command, stdout=subprocess.PIPE,
                    stderr=subprocess.PIPE)
 
 
