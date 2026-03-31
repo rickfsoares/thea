@@ -36,16 +36,18 @@ def execute_video(user_choice, url_videos):
 
 
 def search_video():
+    VIDEOS_FOUNDED_QUANTITY = 5
     ydl_opts = {
         "quiet": True,
-        "format": 'bestvideo+bestaudio/best'
+        "format": "bestvideo+bestaudio/best",
+        "no_warnings": True
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         user_input = input("Search: ")
         if check_user_command(user_input):
             user_input_manager(user_input)
-        info_data = ydl.extract_info(f"ytsearch5:{user_input}", download=False)
+        info_data = ydl.extract_info(f"ytsearch{VIDEOS_FOUNDED_QUANTITY}:{user_input}", download=False)
 
         results = info_data["entries"]
         url_videos = {}
