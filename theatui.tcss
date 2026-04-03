@@ -1,0 +1,4 @@
+Input#video-search {
+    dock: top;
+    margin: 1 0;
+}
