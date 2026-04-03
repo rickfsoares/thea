@@ -1,64 +1,59 @@
-import yt_dlp
-import subprocess
-import sys
+from textual.app import App, ComposeResult
+from textual.widgets import Footer, Header, Input, Button, Label
+from textual import work
+from textual.containers import HorizontalGroup, VerticalScroll
+from logic import fetch_videos, play_video
 
 
-def check_user_command(user_input):
-    USER_COMMANDS = ["q", "b"]
-    if user_input.lower() in USER_COMMANDS:
-        return True
+class Video(HorizontalGroup):
 
-    return False
+    def __init__(self, url: str, title: str):
+        super().__init__()
+        self.url = url
+        self.title = title
 
+    def play(self):
+        play_video(self.url)
 
-def user_input_manager(user_input):
-    USER_COMMANDS = {"q": sys.exit, "b": search_video}
-    if user_input.lower() in USER_COMMANDS:
-        USER_COMMANDS[user_input]()
+    @work(exclusive=True, thread=True)
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.play()
 
-
-def choice_video_option(url_videos):
-    while True:
-        user_choice = input("Choice one of the options above(Ex: 1): ")
-        if check_user_command(user_choice):
-            user_input_manager(user_choice)
-        if user_choice in url_videos:
-            execute_video(user_choice, url_videos)
-            break
-        else:
-            print("Invalid Command")
+    def compose(self) -> ComposeResult:
+        yield Label(self.title)
+        yield Button("Play", variant="error")
 
 
-def execute_video(user_choice, url_videos):
-    command = ["mpv", url_videos[user_choice]]
-    subprocess.Popen(command, stdout=subprocess.PIPE,
-                   stderr=subprocess.PIPE)
+class TheaApp(App):
+    BINDINGS = [("d", "toggle_dark", "Toggle dark mode")]
+
+    CSS_PATH = "theatui.tcss"
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Footer()
+        yield Input(placeholder="Search for a video", id="video-search")
+        yield VerticalScroll(id="videos")
+
+    @work(exclusive=True, thread=True)
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        self.notify(f"Looking for {event.value}")
+        urls = fetch_videos(event.value)
+        self.call_from_thread(self.query_one('#videos').query(Video).remove)
+
+        for k, v in urls.items():
+            video_container = Video(
+                url=v["url"], title=v["title"])
+            self.call_from_thread(self.query_one(
+                "#videos").mount, video_container)
+            self.call_from_thread(video_container.scroll_visible)
+
+    def action_toggle_dark(self) -> None:
+        self.theme = (
+            "textual-dark" if self.theme == "textual-light" else "textual-light"
+        )
 
 
-def search_video():
-    VIDEOS_FOUNDED_QUANTITY = 5
-    ydl_opts = {
-        "quiet": True,
-        "format": "bestvideo+bestaudio/best",
-        "no_warnings": True
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        user_input = input("Search: ")
-        if check_user_command(user_input):
-            user_input_manager(user_input)
-        info_data = ydl.extract_info(f"ytsearch{VIDEOS_FOUNDED_QUANTITY}:{user_input}", download=False)
-
-        results = info_data["entries"]
-        url_videos = {}
-
-        for index, result in enumerate(results):
-            print(f"Index: {index} - Title: {result['title']}")
-            url_videos[str(index)] = result['webpage_url']
-
-    return url_videos
-
-
-while True:
-    url_videos = search_video()
-    choice_video_option(url_videos)
+if __name__ == "__main__":
+    app = TheaApp()
+    app.run()
